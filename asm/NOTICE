@@ -1,0 +1,18 @@
+ail.asm, ail.inc and ail.mac are the IBM Audio Interface Library (AIL) by John Miles,
+Copyright (C) 1991, 1992 Miles Design, Inc. Their headers are kept as written, as text:
+they are transcoded from the upstream's CP437 to UTF-8, so their bytes are not the
+original's.
+
+Origin: John Miles' public AIL2 source release, mirrored at
+https://github.com/Tronix286/AIL2 (revision f9c05599bdeb05a0a2b05557f6a23cdafb8550ce),
+by way of matrix-disassembly v10/src/ at commit 7e9931f, which returned it to the AIL
+2.00 Matrix Cubed links. ail.asm carries five edits that make it the 2.02 DQK.EXE links,
+each with a side comment naming its address, and leaves out matrix's Pascal P_AIL_*
+adapters. ail.inc and ail.mac are matrix's, unchanged.
+
+Licence: AIL2-README.md is that revision's README.md, byte for byte (sha256
+2274dedd4b3df86abbf4bc100acfac9a07037acc5ee4232eb63613d66d725d77). Its "Original
+READ.ME" section is John Miles' grant of May 26, 2000, which covers this source. That
+section quotes the READ.ME of Miles' 2000 release package, which was not retrieved
+first-hand; the mirror's own READ.ME file is Miles' 1992 V2.14 release notes and carries
+no grant.
