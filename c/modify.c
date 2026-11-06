@@ -30,8 +30,6 @@
 
 extern void far status_msg(char far *fmt, char fg, char bg, ...); /* 0a62:0904 */
 extern char far extra_row(void);                                 /* 0bdb:21dd */
-/* v1.0: combtab.c's digit_keypad_keys, read here as nine key codes, '1'..'9' to a keypad key */
-extern short digit_keypad_keys[];                                        /* 6325 */
 
 static unsigned char field = 0xff;                               /* 748a */
 
@@ -442,15 +440,7 @@ void far edit_name(void)                                         /* 2946:0d30 */
         }
     } while (!screen_sync());
     key = game_key_get();
-    if ((key >= 0x31 && key <= 0x39) || key == 0x5c) {
-        /* v1.0: '1'..'9' become digit_keypad_keys' codes (0x85 0x84 0x83 0x86 0x20 0x82 0x87
-         * 0x88 0x81) and backslash becomes 0x37, each marked extended */
-        if (key == 0x5c)
-            key = 0x37;
-        else
-            key = digit_keypad_keys[key - 0x31];
-        extended = 1;
-    } else if (key & 0x80)
+    if (key & 0x80)
         extended = 1;
     else
         extended = 0;

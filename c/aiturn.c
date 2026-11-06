@@ -201,7 +201,7 @@ static char step_ok(struct Character far *character, unsigned char direction_att
             case 0x1d:
                 if (!find_effect(character, 0x1e, &unused_effect_address) && !find_effect(character, 0xa0, &unused_effect_address)
                     && !find_effect(character, 0x8f, &unused_effect_address) && !find_effect(character, 0x3f, &unused_effect_address)
-                    && !character->combat->panicked /* v1.0: no effect-0x39 check here */
+                    && !find_effect(character, 0x39, &unused_effect_address) && !character->combat->panicked
                     && !(character->immunity & 0x18))
                     movement_cost = character->combat->movement + 1;
                 break;

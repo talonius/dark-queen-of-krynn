@@ -1,8 +1,7 @@
 /* DQK.EXE resident module 1fd3: sound events over sound.c's layer.
  * sound_open starts sound for the configured card: its music and digital
- * drivers, the song set and the effect set; when a driver fails it returns
- * -2 (v1.0 has no fallback to card 0's effect mode).  sound_close shuts it
- * down.
+ * drivers, the song set and the effect set; when the digital driver fails,
+ * effects fall back to card 0's effect mode.  sound_close shuts it down.
  * sound_event takes the event numbers the game plays by: 0 and 1 clear and
  * set sfx_enabled, 2 waits for the song, 3..0x0f play an effect, 0x20..0x27
  * play a song, 0x28 and 0x29 set the music loud or quiet, and 0xff stops
@@ -83,12 +82,20 @@ int far sound_open(char far *digital)                            /* 1fd3:000b */
     return_code = return_code * -1;                       /* mul by 0xffff, not neg */
     music_ok = return_code & 1 ? 0 : 1;
     *digital = sfx_ok = return_code & 2 ? 0 : 1;
-    return -2;                  /* v1.0: no fallback to card 0's effect mode */
+    if (music_ok && !sfx_ok && *voc_drv) {
+        *voc_drv = 0;
+        *digital = sfx_ok = 1;
+        sfx_mode = card_sfx_mode[0];
+        slot_close(0x17);
+        goto loaded;
+    }
+    return -2;
 off:
     *digital = sfx_ok = music_ok = 0;
     return 0;
 on:
     *digital = sfx_ok = music_ok = 1;
+loaded:
     if (!*voc_drv) {
         sample_library_set(0x17);
         lib_open('1', "sounds", 0x17);

@@ -123,10 +123,6 @@ int far button_hook(struct Wid far *widget, int msg, int x, int y) /* 1bdb:008e 
                 else
                     attr = 0x87;
             }
-            /* v1.0 only: hi = 2 on a screen of 300 rows or more; hi stays nonzero,
-             * so nothing below reads a difference. */
-            if (hi && screen_rows() >= 300)
-                hi = 2;
             text_print_at(top + 1, left, attr, widget->text);
             if (!(widget->flags & 0x41))
                 text_print_at(top + 1, left, (hi ? 0xb : 0xf) + 0x80, "%c", *widget->text);

@@ -8,7 +8,7 @@
  * byte 1 of paragraph 2910, the last module of RTLink section 8 (payload
  * 0x491f0, link segment 25a4, parent section 3).  Module 280a's final retf
  * is byte 0 of paragraph 2910; section 8's table files every fixup site
- * after it under frame 2910, and seven zero bytes (one in v1.0) follow this module's
+ * after it under frame 2910, and seven zero bytes follow this module's
  * final retf to the section's end.  Built with Turbo C 2.01, tcc -ml -O -Z
  * -d.  Functions are defined in shipped order; bake consumes them in that
  * order.  Code outside the section reaches temple_shop through vector stub
@@ -61,16 +61,16 @@ void far cure_disease(void)                                      /* 2910:00b8 */
     char found;
 
     found = 0;
-    for (index = 1; index <= 6; index++)
+    for (index = 1; index <= 7; index++)
         if (find_effect(cur_node, disease_fx[index], &eff)) {
             found = 1;
-            index = 6;
+            index = 7;
         }
     if (!found)
         str_copy(message, "is not Diseased");
     else {
         fx_lock = 1;
-        for (index = 1; index <= 6; index++)
+        for (index = 1; index <= 7; index++)
             fx_remove(cur_node, disease_fx[index], 0);
         fx_stat_recalc(cur_node, 0);
         fx_lock = 0;
@@ -345,11 +345,12 @@ void far heal_all(void)                                          /* 2910:08fa */
 
     hero = node_list;
     while (hero != 0) {
-        /* v1.0 removes these without holding fx_lock */
+        fx_lock = 1;
         fx_remove(hero, 0x44, 0);
         fx_remove(hero, 0x21, 0);
-        for (index = 1; index <= 6; index++)
+        for (index = 1; index <= 7; index++)
             fx_remove(hero, disease_fx[index], 0);
+        fx_lock = 0;
         if (find_effect(hero, 0x37, &eff)) {
             if (hero->hp == 0)
                 hero->hp = 1;

@@ -554,11 +554,19 @@ static int driver_start(struct SoundDev far *dev)                /* 1e56:0d2b */
         return_code = 0;                         /* and desc is stored unset below */
     else {
         desc = ail_describe_driver(dev->driver);
-        /* v1.0: no RB/SB/SI command-line port and IRQ overrides, and no retry
-         * of a Sound Blaster at IRQ 5 when IRQ 7 is not detected */
+        if ((sound_card == 4 || sound_card == 5) && dev->kind == 0)
+            desc->io = arg_hex("RB", desc->io);
+        if ((sound_card == 3 || sound_card == 5) && dev->kind == 1)
+            desc->io = arg_hex("SB", desc->io);
+        if ((sound_card == 3 || sound_card == 5) && dev->kind == 1)
+            desc->irq = arg_hex("SI", desc->irq);
         if (desc->type != driver_type[dev->kind])
             return_code = -7;
-        else if (!ail_detect_device(dev->driver, desc->io, desc->irq, desc->dma, desc->drq))
+        else if (!(ail_detect_device(dev->driver, desc->io, desc->irq, desc->dma, desc->drq)
+                   || dev->kind == 1 && desc->irq == 7
+                      && (desc->irq = 5,
+                          ail_detect_device(dev->driver, desc->io, desc->irq,
+                                            desc->dma, desc->drq))))
             return_code = -2;
         else
             ail_init_driver(dev->driver, desc->io, desc->irq, desc->dma, desc->drq);
@@ -894,51 +902,4 @@ static void far *slot_alloc(long byte_count, register int slot)           /* 1e5
     else
         allocated_data = 0;
     return allocated_data;
-}
-
-/* v1.0 ends the module with four debugging routines v1.1 dropped; nothing in
- * the shipped image calls them.  slot_unreserve hands byte_count bytes back
- * to a slot; the three dumps print a device to the console. */
-
-int far slot_unreserve(long byte_count, int slot)              /* v1.0 only */
-{
-    register int return_code;
-
-    return_code = 0;
-    if (slot_used(slot) >= byte_count)
-        slot_reserve(slot, -byte_count);
-    else
-        return_code = -1;
-    return return_code;
-}
-
-void far seq_dump(int far *seq)                                 /* v1.0 only */
-{
-    register int index;
-
-    con_printf("hseq:");
-    for (index = 0; index < 6; index++)
-        con_printf(" %d", seq[index]);
-    con_printf("\n");
-}
-
-void far state_dump(void far * far *state)                      /* v1.0 only */
-{
-    register int index;
-
-    con_printf("state table:");
-    for (index = 0; index < 6; index++)
-        con_printf(" %08lx", state[index]);
-    con_printf("\n");
-}
-
-void far dev_dump(struct SoundDev far *dev)                     /* v1.0 only */
-{
-    con_printf("id: typ %u, dID %d, gNm %s, gID %d, drvr %08lx, dscP %08lx, fil %08lx ",
-               dev->kind, dev->driver, dev->driver_file, dev->slot, dev->image,
-               dev->desc, dev->data);
-    if (dev->kind == 0) {
-        seq_dump(dev->seq);
-        state_dump(dev->state);
-    }
 }

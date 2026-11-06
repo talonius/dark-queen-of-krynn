@@ -1016,13 +1016,9 @@ char far can_level_up(struct Character far *character)                      /* 1
         if (character->level[class_index] > 0 && character->level[class_index] < 0x28) {
             lvl = character->level[class_index];
             need = level_xp_threshold(character, lvl + 1, class_index);
-            /* v1.0: capped is cleared only for a knight of order 3 below 0x28;
-             * otherwise it keeps the last class's value unless this one caps. */
-            if (class_index != 1 || character->knight_order != 3 || lvl >= 0x28) {
-                if (max_level[character->race][class_index] <= lvl)
-                    capped = 1;
-            } else
-                capped = 0;
+            capped = 0;
+            if ((class_index != 1 || character->knight_order != 3 || lvl >= 0x28) && max_level[character->race][class_index] <= lvl)
+                capped = 1;
             if (character->xp >= need && need > 0 && !capped)
                 ready = 1;
         }

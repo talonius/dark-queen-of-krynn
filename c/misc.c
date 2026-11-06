@@ -54,7 +54,10 @@ void far game_exit(void)                                         /* 2093:002d */
 {
     slot_close(0);
     game_sound_stop();
+    if (str_cmp(msg_text(2), "Woof") == 0)
+        mem_report(0L);
     sys_shutdown();
+    game_done();
     dos_call(0x4c00);
 }
 

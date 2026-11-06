@@ -370,7 +370,7 @@ void far icon_screen(void)                                       /* 25a4:0570 */
         screen_draw_begin(0);
         text_clear(1, 1, 0x26, 0x16);
         frame_right_panel();
-        /* v1.0: no pal_select(0) before the flush */
+        pal_select(0);
         screen_flush();
         set_open_mode(0x32);
         res = 0;

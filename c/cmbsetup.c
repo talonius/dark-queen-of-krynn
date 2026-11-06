@@ -1001,7 +1001,6 @@ void far combat_setup(void)                                      /* 28d0:1dd7 */
     cur_map->ox = combatant_x(node_list) - 3;
     cur_map->oy = combatant_y(node_list) - 3;
     combat_view_show();
-    pal_select(0);                  /* v1.0 only; v1.1 dropped this call */
     for (character = node_list; character != 0; character = character->next) {
         character->combat->turn_attempts = 0;
         fx_trigger_group(8, &character);

@@ -24,12 +24,7 @@
  * rest are placeholders chosen from use.
  */
 
-/* v1.0: dqk.h has keyed_blit's key as char; v1.0's call site pushes the key as an
- * int (mov ax,0ffh), so this module declares it with an int key instead. */
-#define keyed_blit keyed_blit_dqk_h
 #include "dqk.h"
-#undef keyed_blit
-extern void far keyed_blit(char far *src, int rows, int width, int skip, int key); /* 00d7:212e */
 
 struct Part {                   /* one part of a type 9 glyph */
     unsigned char glyph;        /* +0 */
@@ -261,7 +256,7 @@ void far blit_packed(short row, int col, short rows, short width, short planes,
                      char flag)                                  /* 269b:0409 */
 {
     short scan_index;
-    char line[0xc8];                /* v1.0: 200 bytes; v1.1 widened it to 0x140 */
+    char line[0x140];
     char buf[8][40];
     register int row_bytes;
     register int visible_width;

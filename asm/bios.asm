@@ -8,9 +8,8 @@
 ;  frame has no far call into or out of this range, nor a relocation or pad
 ;  byte at 2992.  The end, 2a72, is ldiv.asm's start.  They are grouped by
 ;  role and share a style: a bp frame, arguments from [bp+6] (a byte
-;  argument read from its word's low byte).  v1.0 does not save si and di
-;  around the BIOS call (v1.1 does); only the text-cell routines, which use
-;  them, push and pop them.
+;  argument read from its word's low byte), si and di saved around the
+;  BIOS call.
 ;
 ;  Assembled by TASM 3.1, /ml, single pass.  No segment fixups, and the MZ
 ;  relocation table has no entry in this range.
@@ -45,7 +44,11 @@ _com_bios       proc    far
                 mov     ah,[bp+6]
                 mov     al,[bp+8]
                 mov     dx,COM1
+                push    si
+                push    di
                 int     BIOS_SERIAL
+                pop     di
+                pop     si
                 pop     bp
                 ret
 _com_bios       endp
@@ -68,7 +71,11 @@ _video_bios     proc    far
                 mov     cx,[bp+0Eh]
                 mov     dh,[bp+10h]
                 mov     dl,[bp+12h]
+                push    si
+                push    di
                 int     BIOS_VIDEO
+                pop     di
+                pop     si
                 pop     bp
                 ret
 _video_bios     endp
@@ -159,9 +166,13 @@ _clock_bios     proc    far
                 mov     ah,[bp+6]
                 mov     dx,[bp+8]
                 mov     cx,[bp+0Ah]
+                push    si
+                push    di
                 int     BIOS_CLOCK
                 mov     ax,dx
                 mov     dx,cx
+                pop     di
+                pop     si
                 pop     bp
                 ret
 _clock_bios     endp
@@ -176,7 +187,11 @@ _printer_bios   proc    far
                 mov     ah,[bp+6]
                 mov     dx,[bp+8]
                 mov     al,[bp+0Ah]
+                push    si
+                push    di
                 int     BIOS_PRINTER
+                pop     di
+                pop     si
                 pop     bp
                 ret
 _printer_bios   endp

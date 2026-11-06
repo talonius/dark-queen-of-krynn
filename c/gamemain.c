@@ -169,5 +169,6 @@ void far game_main(int argc, char far *far *argv)                /* 1fe9:00ef */
     dl_done();
     game_sound_stop();
     sys_shutdown();
+    game_done();
     dos_call(0x4c00);
 }

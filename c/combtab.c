@@ -114,9 +114,8 @@ char helpless_kinds[4] = {
     0x1f, 0x33, 0x34, 0x35
 };
 
-/* v1.0: six diseases; v1.1 adds 0xd7 */
-unsigned char disease_fx[6] = {
-    0x1f, 0x22, 0x2b, 0xac, 0xb9, 0x2c
+unsigned char disease_fx[7] = {
+    0x1f, 0x22, 0x2b, 0xac, 0xd7, 0xb9, 0x2c
 };
 
 unsigned char fx_clear[18] = {
@@ -125,7 +124,8 @@ unsigned char fx_clear[18] = {
 };
 /* The digits '1'..'9' as cursor-keypad keys (game_key_get codes: 0x81 PgUp/NE,
  * 0x82 Right, 0x83 PgDn, 0x84 Down, 0x85 End, 0x86 Left, 0x87 Home, 0x88 Up; '5'
- * is a space), nine little-endian words read by modify.c's edit_name. */
+ * is a space), nine little-endian words.  v1.0's modify.c edit_name reads it;
+ * v1.1 dropped that reader and nothing reads it here. */
 unsigned char digit_keypad_keys[17] = {
     0x85, 0x00, 0x84, 0x00, 0x83, 0x00, 0x86, 0x00, 0x20, 0x00, 0x82, 0x00, 0x87, 0x00, 0x88, 0x00,
     0x81

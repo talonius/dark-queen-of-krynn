@@ -141,7 +141,7 @@ void far combat_aging(void)                                      /* 1f4e:012f */
                                                  search_body_text));
                 }
                 text_clear(0x17, row, 0x26, 0x15);
-                text_wrap(0x17, row, 0x26, 0x15, 0xe, 0, 1, message); /* v1.0: yellow (0xe), not 0xb */
+                text_wrap(0x17, row, 0x26, 0x15, 0xb, 0, 1, message);
                 continue_prompt(0, 0, continue_items);
             }
         }

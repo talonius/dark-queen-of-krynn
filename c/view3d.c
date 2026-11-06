@@ -109,7 +109,11 @@ void far view_attrs(char backdrop_attribute, char wall_attribute, char view_attr
     geo.attr_6 = view_attribute_6;
 }
 
-/* v1.0 has no view_glyph_cell wrapper (v1.1 2f0d:01fb) */
+void far view_glyph_cell(int col, int row, unsigned char glyph, int unused,
+                         struct Res far *resource)                      /* 2f0d:01fb */
+{
+    glyph_cell(col, row, glyph, unused, resource);
+}
 
 void far view_frame(void)                                        /* 2f0d:021c */
 {
@@ -315,7 +319,6 @@ void far view_draw(char x, char y, unsigned char dir)            /* 2f0d:085a */
     register int x0;
 
     mode_change(0);
-    pal_select(0);                      /* v1.0 only */
     moon_display_update(0);
     if (geo.show_map != 0)
         map_draw(x, y, dir);
@@ -532,8 +535,8 @@ void far back_free(void)                                         /* 2f0d:118a */
 
 void far wall_set_load(unsigned char area_id, unsigned char slot)      /* 2f0d:119d */
 {
-    short index;
     char name[8];
+    short index;
     unsigned char map[0x100];
 
     set_open_mode('2');
@@ -574,7 +577,7 @@ void far wall_sets_free(char reset)                              /* 2f0d:13ef */
 {
     register int index;
 
-    for (index = 0; index < 2; index++)  /* v1.0 frees sets 0 and 1 only */
+    for (index = 0; index < 3; index++)
         res_free(&wall_set_res[index]);
     if (reset)
         cur_geo = -1;

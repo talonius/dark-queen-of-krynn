@@ -4,9 +4,6 @@
  * waiting up to 800 ticks on each; a space moves on, Esc leaves at once, and any other key
  * ends the sequence early.  ending_show plays the three final1 pictures
  * frame by frame, with pauses between them.
- * (v1.0: title_pic takes a fade flag it never reads -- v1.1 blacks out
- * palette entries 16..255 with pal_set when it is set -- and ending_show
- * does not pal_select each picture after loading its palette.)
  *
  * EXE 0x0383cb..0x038e53, one Turbo C large-model _TEXT segment starting at
  * byte 0xb of paragraph 264f in RTLink section 4 (payload 0x37910, link
@@ -76,7 +73,9 @@ void far title_pic(char far *name, unsigned char picture_id, char fade,
     struct Res far *res;
     short set;
     char file[12];
+    unsigned char rgb[0x300];
 
+    mem_fill(rgb, sizeof(rgb), 0);
     res = 0;
     str_copy(file, name);
     str_cat(file, "1");
@@ -131,6 +130,10 @@ void far title_pic(char far *name, unsigned char picture_id, char fade,
     case 7:
     case 8:
         glyph_draw(0, 0, 2, res);
+    }
+    if (fade) {
+        pal_set(16, 240, rgb, 0, 0);
+        pal_commit();
     }
     res_palette_load(res);
     screen_flush();
@@ -195,6 +198,7 @@ void far ending_show(void)                                       /* 264f:03cb */
     tile_open_file("final1", 1, 0, 0, &res);
     sfx_play(39);
     res_palette_load(res);
+    pal_select(res);
     ending_frame(1, -1, res);
     ending_pause(1);
     for (index = 2; index <= 16; index++) {
@@ -207,6 +211,7 @@ void far ending_show(void)                                       /* 264f:03cb */
     set_open_mode('3');
     tile_open_file("final1", 3, 0, 0, &res);
     res_palette_load(res);
+    pal_select(res);
     ending_frame(1, -1, res);
     ending_pause(2);
     for (index = 2; index <= 6; index++) {
@@ -232,6 +237,7 @@ void far ending_show(void)                                       /* 264f:03cb */
     set_open_mode('3');
     tile_open_file("final1", 2, 0, 0, &res);
     res_palette_load(res);
+    pal_select(res);
     ending_frame(1, -1, res);
     for (index = 0; index < 6; index++) {
         ending_frame(1, 1, res);

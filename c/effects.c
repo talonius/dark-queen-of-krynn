@@ -914,7 +914,7 @@ void far fx_terrify(struct Character far *character, struct Effect far *effect, 
     node = 0;
     for (nearby_character = node_list; nearby_character != 0; nearby_character = nearby_character->next)
         if (nearby_character->side != character->side && nearby_character->status == 0 && nearby_character->level_high < 7
-            && !find_effect(nearby_character, 0x78, &node))  /* v1.0: no 0x5c test */
+            && !find_effect(nearby_character, 0x78, &node) && !find_effect(nearby_character, 0x5c, &node))
             fx_add_message(nearby_character, 0x78, 0, 0, 1, 1, 0, "is terrified");
     mirror_image_bypass = 0;
 }
@@ -1030,10 +1030,9 @@ void far fx_drain(struct Character far *character, unsigned char count)
             if (character->level[idx] > 0)
                 any = 1;
         if (!any || character->hp_max <= 0)
-            /* v1.0 spells it "drainning"; v1.1 corrects both */
-            fx_disable(character, 8, "dies from drainning");
+            fx_disable(character, 8, "dies from draining");
         else if (character->hp <= 0)
-            fx_disable(character, 4, "collapses from drainning");
+            fx_disable(character, 4, "collapses from draining");
     }
 }
 
@@ -1736,11 +1735,9 @@ void far fx_disease_touch(struct Character far *character, struct Effect far *ef
     long node;
 
     fx_target = character->combat->target;
-    /* v1.0 tests for and adds 0xac/0x31 where v1.1 uses 0xd7, and packs the rot's
-     * count in strength's high nibble (<< 4, + 0xf) where v1.1 uses the top three bits */
-    if (!find_effect(fx_target, 0x32, &node) && !find_effect(fx_target, 0xac, &node)) {
-        fx_add(fx_target, 0x31, 0x3840, 0xff, 1);
-        fx_add(fx_target, 0xac, 0xa8c0, (fx_roll_dice(1, 6) << 4) + 0xf, 1);
+    if (!find_effect(fx_target, 0x32, &node) && !find_effect(fx_target, 0xd7, &node)) {
+        fx_add(fx_target, 0xd7, 0x3840, 0xff, 1);
+        fx_add(fx_target, 0xac, 0xa8c0, (fx_roll_dice(1, 6) << 5) + 0x1f, 1);
         hero_text(fx_target, "is Diseased", 10, 1);
     }
 }
@@ -1771,14 +1768,12 @@ void far fx_rotting(struct Character far *character, struct Effect far *effect, 
 {
     if (!fx_lock) {
         hero_text(character, "Rots...", 10, 1);
-        if (character->stats[5].cur > 2)        /* v1.0: > 2, else 0; v1.1: > 3 */
+        if (character->stats[5].cur > 3)
             character->stats[5].cur -= 2;
-        else
-            character->stats[5].cur = 0;
         if (character->stats[5].cur < 3)
             character->stats[5].cur = 3;
-        if (effect->strength / 0x10 > 1) {      /* v1.0: steps of 0x10 */
-            effect->strength -= 0x10;
+        if (effect->strength / 0x20 > 1) {
+            effect->strength -= 0x20;
             fx_rearm(character, 0xac, effect->strength, 0xa8c0);
         } else
             fx_disable(character, 8, "Dies rots away");
@@ -2093,25 +2088,31 @@ void far fx_green_fire(struct Character far *character, struct Effect far *effec
 {
     unsigned char minutes;
 
-    /* v1.0 rearms first and burns only when the rearm succeeds; it has no fx_lock
-     * test, no final hp test, and never turns status 4/5 into 6 */
+    if (character->status == 4 || character->status == 5)
+        character->status = 6;
     if (character->hp > 0 && character->hp < character->hp_max) {
         if (view_mode == 5)
             minutes = 1;
         else
             minutes = 10;
-        if (fx_rearm(character, 0xc4, 0xff, minutes) && !no_study) {
-            element_mask = 1;
-            fx_damage(character, fx_roll_damage(1, 8), 0, 0);
-            if (damage != 0 && character->status != 3) {
-                if (character->hp == 0) {
-                    if (view_mode == 5)
-                        hero_text(character, "is engulfed by green fire!", 10, 1);
-                    else
-                        fx_disable(character, 6, "is engulfed by green fire!");
-                } else
-                    hero_text(character, "is turning to green fire!", 10, 1);
+        if (!fx_lock) {
+            if (!no_study) {
+                element_mask = 1;
+                fx_damage(character, fx_roll_damage(1, 8), 0, 0);
+                if (damage != 0 && character->status != 3) {
+                    if (character->hp == 0) {
+                        if (character->status == 4 || character->status == 5)
+                            character->status = 6;
+                        if (view_mode == 5)
+                            hero_text(character, "is engulfed by green fire!", 10, 1);
+                        else
+                            fx_disable(character, 6, "is engulfed by green fire!");
+                    } else
+                        hero_text(character, "is turning to green fire!", 10, 1);
+                }
             }
+            if (character->hp != 0)
+                fx_rearm(character, 0xc4, 0xff, minutes);
         }
     }
 }
@@ -2335,7 +2336,12 @@ void far fx_anemone_acid(struct Character far *character, struct Effect far *eff
     }
 }
 
-/* v1.0 has no fx_rot_touch (v1.1 2b3a:4ee7, effect 0xd7) */
+/* 2b3a:4ee7 */
+void far fx_rot_touch(struct Character far *character, struct Effect far *effect, char removed)
+{
+    if (fx_rearm(character, 0xd7, effect->strength, 0x3840) && fx_heal(character, 1, 1))
+        heal_msg(character);
+}
 
 /* 2b3a:4f2f */
 void far fx_none(struct Character far *character, struct Effect far *effect, char removed)
@@ -2568,7 +2574,7 @@ void far fx_install_2(void)
     (fx_handler - 1)[212] = fx_anemone_acid;
     (fx_handler - 1)[213] = fx_none;
     (fx_handler - 1)[214] = fx_attack_vs_immunity80;
-    (fx_handler - 1)[215] = fx_none;    /* v1.0: no fx_rot_touch */
+    (fx_handler - 1)[215] = fx_rot_touch;
     (fx_handler - 1)[216] = fx_none;
     (fx_handler - 1)[217] = fx_none;
     (fx_handler - 1)[218] = fx_none;

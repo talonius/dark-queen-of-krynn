@@ -18,11 +18,10 @@
  *
  * The seg:off beside each extern is the far pointer as stored in the shipped
  * call, or the DGROUP offset of an extern variable.  Callee and variable
- * names are placeholders chosen from use.  game_setup, game_init and
- * game_reset are reached through the vector stubs 1d99:119d, 1d99:1193
- * and 1d99:1161, from gamemain.c.  (v1.0 has no game_done, the empty
- * routine v1.1 added after game_setup, and game_init calls sfx_init after
- * the palette set-up rather than after the loading message.)
+ * names are placeholders chosen from use.  game_setup, game_init,
+ * game_reset and game_done are reached through the vector stubs 1d99:119d,
+ * 1d99:1193, 1d99:1161 and 1d99:0fbd, from gamemain.c; misc.c's
+ * game_exit also calls 1d99:0fbd.
  *
  * _DATA is DGROUP 6d78..6dc0: color_table, alloc_next and five literals.
  * _BSS is empty: every other variable this module writes is declared extern.
@@ -75,6 +74,11 @@ void far game_setup(void)                                        /* 25de:0033 */
     drop_pool_init(20);
 }
 
+/* Empty mirror of game_setup, called after sys_shutdown (v1.1 only). */
+void far game_done(void)                                          /* 25de:0130 */
+{
+}
+
 void far game_init(void)                                         /* 25de:0131 */
 {
     unsigned char index;
@@ -83,6 +87,7 @@ void far game_init(void)                                         /* 25de:0131 */
     font_load('1', "game");
     ticks_start();
     text_print_at(0x1fa0, 0x1f40, 10, "Loading...Please Wait");
+    sfx_init();
     glyph_library_open('1', "always", 0);
     if (is_xvga() || !pixel_shift()) {
         pal_init();
@@ -91,7 +96,6 @@ void far game_init(void)                                         /* 25de:0131 */
         color_map_set(color_table);
     } else
         pal_glyph(0, 0, 0);
-    sfx_init();
     res_reset();
     button_hook_install();
     misc_unit_init();

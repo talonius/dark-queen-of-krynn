@@ -1671,8 +1671,9 @@ void far cmd_journal(void)                                       /* 25a4:32b2 */
     text_col = 1;
     str_copy(text, msg_format("This is recorded as journal entry %s.",
                               byte_str(entry)));
-    /* v1.0: the entry is printed at full speed (text_slow is not set) */
+    text_slow = 1;
     text_wrap(1, 0x11, 0x26, 0x16, 7, 0, 1, text);
+    text_slow = 0;
     str_copy(text, press_text);
     menu_horiz("", text, 1, confirm_anim);
     box_draw();

@@ -10,10 +10,9 @@
  * their entries marked stale, and the list is started in free slots.
  * pal_commit saves the cycle slots pal_set touched into cyc_last, then
  * copies the stale entries to pal_live and hands the span they cover to
- * 00d7:20f6.  input_poll steps every cycle that is due one place, hands
- * on the entries it rotated, then advances the cycle's next tick once;
- * strutil.c and menu.c call it inside their wait loops, so "input_poll"
- * is a placeholder.
+ * 00d7:20f6.  input_poll steps every cycle that is due and hands on the
+ * entries it rotated; strutil.c and menu.c call it inside their wait loops,
+ * so "input_poll" is a placeholder.
  *
  * EXE 0x0185bb..0x018db6, one Turbo C large-model _TEXT segment starting at
  * byte 0xb of paragraph 261b.  Built with Turbo C 2.01, tcc -ml -O -Z -d.
@@ -212,26 +211,27 @@ void far input_poll(void)                                        /* 261b:05be */
             continue;
         first_color = cycle->spec.first;
         color_span = cycle->spec.count - 1;
-        /* v1.0: one step per due cycle per poll, however late it is; v1.1 catches up */
-        if (cycle->spec.flags & 1) {
-            red = pal_live[first_color][0];
-            green = pal_live[first_color][1];
-            blue = pal_live[first_color][2];
-            mem_move(pal_live[first_color + 1], pal_live[first_color], color_span * 3);
-            pal_live[first_color + color_span][0] = red;
-            pal_live[first_color + color_span][1] = green;
-            pal_live[first_color + color_span][2] = blue;
-        } else {
-            red = pal_live[first_color + color_span][0];
-            green = pal_live[first_color + color_span][1];
-            blue = pal_live[first_color + color_span][2];
-            mem_move(pal_live[first_color], pal_live[first_color + 1], color_span * 3);
-            pal_live[first_color][0] = red;
-            pal_live[first_color][1] = green;
-            pal_live[first_color][2] = blue;
+        while (cycle->next <= now) {
+            if (cycle->spec.flags & 1) {
+                red = pal_live[first_color][0];
+                green = pal_live[first_color][1];
+                blue = pal_live[first_color][2];
+                mem_move(pal_live[first_color + 1], pal_live[first_color], color_span * 3);
+                pal_live[first_color + color_span][0] = red;
+                pal_live[first_color + color_span][1] = green;
+                pal_live[first_color + color_span][2] = blue;
+            } else {
+                red = pal_live[first_color + color_span][0];
+                green = pal_live[first_color + color_span][1];
+                blue = pal_live[first_color + color_span][2];
+                mem_move(pal_live[first_color], pal_live[first_color + 1], color_span * 3);
+                pal_live[first_color][0] = red;
+                pal_live[first_color][1] = green;
+                pal_live[first_color][2] = blue;
+            }
+            cycle->next += cycle->spec.rate;
         }
         dac_load(first_color, color_span + 1, wait, pal_live[first_color]);
         wait = 0;
-        cycle->next += cycle->spec.rate;
     }
 }

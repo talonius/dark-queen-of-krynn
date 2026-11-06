@@ -10,12 +10,6 @@
  * Death Knights of Krynn characters (.pc, .eff, .jnk, .wiz under config's
  * save_path) and saved games (savgam<c>.pty and chrdat<c><n>.gam), their
  * item, effect and spell ids mapped by three switches.
- * (v1.0: dkk_load does not re-equip the imported 0x3a items with two
- * item_equip_toggle calls; dkk_convert, dkk_effects_cb and dkk_items_cb
- * assign several word and long fields to themselves after copying them, as
- * shipped; dkk_effects_cb reads at most 0x80 bytes and dkk_items_cb 0x41e,
- * refusing a file that fills the buffer, and dkk_items_cb does not clamp
- * the name length; nibbles holds a permutation of 0..15.)
  *
  * EXE 0x03316e..0x03679c, one Turbo C large-model _TEXT segment starting at
  * byte 0xe of paragraph 2177 in RTLink section 3 (payload 0x30ed0, link
@@ -126,9 +120,8 @@ extern int  far path_default_ext(char far *path, char far *ext, int force);
                                                                  /* 1c60:025c */
 extern int  far str_match(char far *text_cursor, char far *pattern_cursor);            /* 1d10:006d */
 
-static char nibbles[16] = { 0, 7, 12, 13, 2, 14, 11, 9, 8, 6, 5, 15, 3, 10, 4, 1 };
-                                /* 5eec, referenced by nothing found;     */
-                                /* v1.0: a permutation, v1.1: 0..15       */
+static char nibbles[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+                                /* 5eec, referenced by nothing found      */
 
 static char old_frame;                                           /* acc6 */
 static char cur_slot;                                            /* acc7 */
@@ -452,6 +445,8 @@ void far qch_load(char far *name, struct Character far *hero)         /* 2177:0b
 
 void far dkk_load(char far *name, struct Character far *hero)         /* 2177:0b82 */
 {
+    struct Character far *saved;
+    struct Item far *item;
     char disk;
     char path[80];
 
@@ -466,6 +461,14 @@ void far dkk_load(char far *name, struct Character far *hero)         /* 2177:0b
     archive_open(disk, path, 0, dkk_items_cb);
     path_default_ext(path, "wiz", 1);
     archive_open(disk, path, 0, dkk_spells_cb);
+    for (item = hero->items; item != 0; item = item->next)
+        if (item->rec.type == 0x3a && item->rec.equipped && !item->rec.cursed) {
+            saved = cur_node;
+            cur_node = hero;
+            item_equip_toggle(item);
+            item_equip_toggle(item);                               /* twice, as shipped                  */
+            cur_node = saved;
+        }
 }
 
 static char far dkk_hero_cb(int file_handle)                              /* 2177:0cd7 */
@@ -515,8 +518,6 @@ static void far dkk_convert(struct Dkk far *dkk, struct Character far *hero)
     mem_move5(dkk->thief, hero->thief, 8);
     mem_move5(&dkk->npc, &hero->npc, 1);
     mem_move5(dkk->coins, hero->coins, 6);
-    for (class_index = 0; class_index <= 2; class_index++)    /* v1.0: these self-assignments are as shipped */
-        hero->coins[class_index] = hero->coins[class_index];
     mem_move5(dkk->level_old, hero->level_max, 8);
     hero->level_max[1] = hero->level_max[7];
     mem_move5(dkk->level, hero->level, 8);
@@ -533,14 +534,11 @@ static void far dkk_convert(struct Dkk far *dkk, struct Character far *hero)
     mem_move5(&dkk->str_bonus, &hero->str_bonus, 1);
     mem_move5(&dkk->identity, &hero->identity, 1);
     mem_move5(&dkk->xp, &hero->xp, 4);
-    hero->xp = hero->xp;
     mem_move5(&dkk->xp_old, &hero->old_xp, 4);
-    hero->old_xp = hero->old_xp;
     mem_move5(&dkk->hp_old_max, &hero->old_hp_max, 1);
     mem_move5(&dkk->class_mask, &hero->class_mask, 1);
     mem_move5(&dkk->hp_base, &hero->hp_base, 1);
     mem_move5(&dkk->xp_award, &hero->xp_award, 2);
-    hero->xp_award = hero->xp_award;
     mem_move5(&dkk->icon_head, &hero->icon_head, 1);
     mem_move5(&dkk->icon_body, &hero->icon_body, 1);
     mem_move5(&dkk->order_no, &hero->order_no, 1);
@@ -551,7 +549,6 @@ static void far dkk_convert(struct Dkk far *dkk, struct Character far *hero)
     mem_move5(&dkk->hands, &hero->hands, 1);
     mem_move5(&dkk->save_bonus, &hero->save_bonus, 1);
     mem_move5(&dkk->encumbrance, &hero->encumbrance, 2);
-    load_hero->encumbrance = load_hero->encumbrance;
     mem_move5(&dkk->spell_resist, &hero->spell_resist, 1);
     mem_move5(&dkk->level_up, &hero->level_up, 1);
     mem_move5(&dkk->state, &hero->status, 1);
@@ -583,12 +580,12 @@ static char far dkk_effects_cb(int file_handle)                           /* 217
 {
     unsigned short bytes_read;
     struct Effect far *eff;
-    char buf[0x80];             /* DKK TEffects, 9 bytes each             */
+    char buf[0x8d];             /* DKK TEffects, 9 bytes each             */
     register int record_offset;
 
     bytes_read = dos_io(0x3f00, buf, file_handle, sizeof buf);
     if (bytes_read != 0) {
-        if (bytes_read >= 0x80)
+        if (bytes_read > 0x8c)
             error_box("Too many effects!");
         else {
             record_offset = 0;
@@ -597,7 +594,6 @@ static char far dkk_effects_cb(int file_handle)                           /* 217
             do {
                 eff->id = effect_map(buf[record_offset]);
                 mem_move5(&buf[record_offset + 1], &eff->duration, 2);
-                eff->duration = eff->duration;
                 mem_move5(&buf[record_offset + 3], &eff->strength, 2);
                 eff->next = 0;
                 record_offset += 9;
@@ -616,12 +612,12 @@ static char far dkk_items_cb(int file_handle)                             /* 217
 {
     unsigned short bytes_read;
     struct Item far *item;
-    char buf[0x41e];            /* DKK TItemRecords, 0x3f bytes each      */
+    char buf[0x3f1];            /* DKK TItemRecords, 0x3f bytes each      */
     register int record_offset;
 
     bytes_read = dos_io(0x3f00, buf, file_handle, sizeof buf);
     if (bytes_read != 0) {
-        if (bytes_read >= 0x41e)
+        if (bytes_read > 0x3f0)
             error_box("Too many items!");
         else {
             record_offset = 0;
@@ -629,7 +625,7 @@ static char far dkk_items_cb(int file_handle)                             /* 217
             item = load_hero->items;
             do {
                 mem_move5(&buf[record_offset + 1], item->name, 35);
-                item->name[buf[record_offset]] = 0;
+                item->name[int_min(0x22, int_max(0, buf[record_offset]))] = 0;
                 mem_move5(&buf[record_offset + 0x29], &item->in_use, 1);
                 mem_move5(&buf[record_offset + 0x2e], &item->rec.type, 1);
                 for (tick_slot = 0; tick_slot <= 2; tick_slot++)
@@ -640,10 +636,8 @@ static char far dkk_items_cb(int file_handle)                             /* 217
                 mem_move5(&buf[record_offset + 0x35], &item->rec.unid_mask, 1);
                 mem_move5(&buf[record_offset + 0x36], &item->rec.cursed, 1);
                 mem_move5(&buf[record_offset + 0x37], &item->rec.weight, 2);
-                item->rec.weight = item->rec.weight;
                 mem_move5(&buf[record_offset + 0x39], &item->rec.quantity, 1);
                 mem_move5(&buf[record_offset + 0x3a], &item->rec.value, 2);
-                item->rec.value = item->rec.value;
                 mem_move5(&buf[record_offset + 0x3c], item->rec.u.spells, 3);
                 if (item_casts(item)) {
                     item->rec.u.spells[0] = spell_map(item->rec.u.spells[0] & 0x7f)

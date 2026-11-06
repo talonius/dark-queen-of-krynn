@@ -1,6 +1,5 @@
 /* DQK.EXE overlay 04 module 25a4: the configuration file, the memory and
- * video checks made against it.  (v1.0 has no arg_hex: v1.1 added the
- * hex-valued command options.)
+ * video checks made against it, and hex-valued command options.
  *
  * EXE 0x037910..0x037b71, one Turbo C large-model _TEXT segment starting at
  * byte 0 of paragraph 25a4, the first module of RTLink section 4 (payload
@@ -77,4 +76,32 @@ void far video_check(void)                                       /* 25a4:00e2 */
         con_printf(msg);
         dos_call(0x4c01);
     }
+}
+
+int far arg_hex(char far *key, int value)                        /* 25a4:0170 */
+{
+    char far *arg;
+    int hex_value;
+    int index;
+
+    for (index = 1; index < 10; index++) {
+        arg = msg_text(index);
+        if (to_upper(arg[0]) == key[0] && to_upper(arg[1]) == key[1]
+            && str_len(arg) > 2) {
+            arg += 2;
+            hex_value = 0;
+            do {
+                if (*arg >= '0' && *arg <= '9')
+                    hex_value += *arg - '0';
+                else if (*arg >= 'A' && *arg <= 'Z' || *arg >= 'a' && *arg <= 'z')
+                    hex_value += to_upper(*arg) - ('A' - 10);
+                arg++;
+                if (*arg)
+                    hex_value <<= 4;
+            } while (*arg);
+            if (hex_value)
+                value = hex_value;
+        }
+    }
+    return value;
 }

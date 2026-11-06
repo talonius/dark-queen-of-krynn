@@ -1045,7 +1045,7 @@ void far combat_cast_begin(unsigned char spell, char mode, char far *done) /* 21
     }
     if (game_state[STATE_UNDERWATER] && (kind == 0x4a || kind == 9 || kind == 0x2f || kind == 0x76
                              || kind == 0x73 || kind == 0x7c)) {
-        bottom_msg("Can't be cast underwater!");  /* v1.0 wording */
+        bottom_msg("That has no effect underwater!");
         kind = 0;
     }
     if (!mode) {
@@ -1364,7 +1364,7 @@ void far aim_menu(struct Character far *character, struct Character far *charact
             if (attack == 1)
                 if (character == character_cursor || who == 0 && kind == 0x1f)
                     *active = 0;
-                else if (has_ranged_weapon(character) /* v1.0: no adjacent-throw exemption */
+                else if (has_ranged_weapon(character) && (dist != 1 || !has_throwable_weapon(character))
                          && (!ranged_ammo_find(character, &sel)
                              || combat_targets_near(character, 1, 0) > 0 && !has_throwable_weapon(character)))
                     *active = 0;

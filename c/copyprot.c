@@ -149,7 +149,7 @@ char far journal_check(void)                                     /* 26f8:008b */
         text_clear(4, 8, 0x26, 8);
         unscramble(heading, quiz_table[section].heading);
         status_printf(4, 8, 13, 0, heading);
-        str_copy(response, input_text("Enter ", 14, 0, 20));
+        str_copy(response, input_text("Enter ", 11, 0, 20));
         copyprot_markers[2] = 1;
     } while (ntries != 3 && !str_same(response, answer));
     copyprot_markers[3] = 1;

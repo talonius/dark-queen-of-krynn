@@ -431,9 +431,8 @@ void far item_sell(struct Character far *hero, struct Item far *item) /* 280a:0b
         price = item->rec.quantity * price;
     item_name(hero, item, 0, 0, 0, 0);
     if (price > 0) {
-        /* v1.0 formats the offer with "%d"; v1.1 with "%u" */
         text_wrap(1, 0x15, 0x26, 0x16, 0xb, 0, 1,
-                  msg_format("I'll give you %d steel pieces for your %s", price,
+                  msg_format("I'll give you %u steel pieces for your %s", price,
                              item->name));
         str_copy(ask, "Will you sell ");
         if (item->rec.quantity < 2 || item->rec.type == 0x49)

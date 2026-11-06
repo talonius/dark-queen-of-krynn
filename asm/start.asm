@@ -6,7 +6,7 @@
 ;
 ;  It makes DS and SS DGROUP, copies the command tail onto the stack with the
 ;  program's path and a space ahead of it ("C " instead under DOS 2; under DOS 1
-;  it takes int 20h), zeroes DGROUP a254..db57 (the _BSS of every module), and
+;  it takes int 20h), zeroes DGROUP a260..db5f (the _BSS of every module), and
 ;  far-calls start_main (cmdargs.c, 2c52:0002) with that string.  When start_main
 ;  returns it exits to DOS with code 0.
 ;
@@ -27,8 +27,8 @@ _DATA           ends
                 extrn   _start_main:far         ; 1c52:0002, cmdargs.c
 
 DGROUP_PARAS    equ     1000h                   ; DGROUP's 64K, data and stack
-BSS_START       equ     0A254h                  ; DGROUP's _BSS, zeroed at start-up
-BSS_BYTES       equ     3905h                   ; halved to 1c82h words: a254..db57
+BSS_START       equ     0A260h                  ; DGROUP's _BSS, zeroed at start-up
+BSS_BYTES       equ     3901h                   ; halved to 1c80h words: a260..db5f
 
 START_TEXT      segment byte public 'CODE'
                 assume  cs:START_TEXT, ds:DGROUP

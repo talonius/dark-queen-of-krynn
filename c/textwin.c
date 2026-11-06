@@ -42,11 +42,8 @@ static unsigned pause_ms[10] = {                                 /* 1cd8 */
 static char input_ok;                                            /* a62a */
 static char input_buf[41];      /* a62b  up to 1b05's a654; needs >= 0x24 */
 
-void far text_fill(int row1, int col1, int row2, int col2, register int attr) /* 1a62:0004 */
+void far text_fill(int row1, int col1, int row2, int col2, int attr) /* 1a62:0004 */
 {
-    /* v1.0: grey (8) fills as 0x17 on XVGA, or where pixel_shift is 0. */
-    if ((is_xvga() || pixel_shift() == 0) && attr == 8)
-        attr = 0x17;
     fill_rect(row1, col1, row2, col2, attr);
 }
 

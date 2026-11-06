@@ -332,7 +332,7 @@ char far *empty_text = "";
 
 char far *title_text = "The Dark Queen of Krynn";
 
-char far *version_text = "Version 1.0          May 6,1992";
+char far *version_text = "Version 1.1        July 29,1992";
 
 char far *txt_choose_spell = "Choose Spell:";
 

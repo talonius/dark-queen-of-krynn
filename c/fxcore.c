@@ -53,9 +53,9 @@ void far fx_add_message(struct Character far *character, unsigned char kind, int
                       char saved, char far *msg);
 static void fx_hurt_immune(struct Character far *character);
 
-static unsigned char hp_fx[17] = {                               /* 00a2 */
+static unsigned char hp_fx[16] = {                               /* 00a2 */
     0x03, 0x03, 0x0b, 0x15, 0x17, 0x1b, 0x1e, 0x1f,
-    0x23, 0x34, 0x4d, 0x6a, 0x6b, 0x6f, 0xc4, 0xb2, 0x76   /* v1.0 also 0xc4 */
+    0x23, 0x34, 0x4d, 0x6a, 0x6b, 0x6f, 0xb2, 0x76
 };
 
 /* The translated Pascal unit's empty initialization block (DKK fxengine.pas). */
@@ -123,7 +123,8 @@ void far fx_remove(struct Character far *character, unsigned char kind, struct E
         prev = character->effects;
         while (prev != 0 && prev->next != node)
             prev = prev->next;
-        prev->next = node->next;     /* v1.0: no check that prev was found */
+        if (prev != 0)
+            prev->next = node->next;
     }
     pool_free(node, 9, &effect_pool);
     if (kind == 0xe)
@@ -352,7 +353,7 @@ void far fx_terrain_apply(struct Character far *character, char may_save, char s
     if (kind != 0 && (kind != 0x1d || skip_1d == 0)) {
         if (!combatant_visible(character, 1) && move_flag)
             combat_view_scroll(combatant_x(character), combatant_y(character), 0xff, 8);
-        /* v1.0: element_mask = 8 only for the knives (0x1b), below */
+        element_mask = 8;
         switch (kind) {
         case 0x1d:
             current_spell = 0x22;
@@ -428,7 +429,6 @@ void far fx_terrain_apply(struct Character far *character, char may_save, char s
             break;
         case 0x1b:
             current_spell = 0x65;
-            element_mask = 8;
             damage = 0xff;
             fx_trigger_group(9, &character);
             if (damage == 0)
@@ -640,7 +640,7 @@ void far fx_hp_effects_remove(struct Character far *character)                  
     unsigned char index;
     struct Effect far *effect;
 
-    for (index = 1; index <= 17; index++)
+    for (index = 1; index <= 16; index++)
         fx_remove(character, (hp_fx - 1)[index], 0);
     if (find_effect(character, 0x4d, &effect) && character->npc == 0xb3)
         character->side = 0;
@@ -956,12 +956,13 @@ void far fx_add_message(struct Character far *character, unsigned char kind, int
 
 char far fx_heal(struct Character far *character, unsigned char healing_amount, char show) /* 148f:25f7 */
 {
+    struct Effect far *effect;
     char result;
 
     result = 0;
     if (character->status == 0 || character->status == 1 || character->status == 4 || character->status == 5) {
-        /* v1.0: show == 0 heals with no effect 0xd7 test */
-        if ((character->hp < character->hp_max && show != 0) || show == 0) {
+        if ((show != 0 && character->hp < character->hp_max)
+            || (show == 0 && !find_effect(character, 0xd7, &effect))) {
             character->hp = character->hp + healing_amount;
             if (character->hp > character->hp_max)
                 character->hp = character->hp_max;

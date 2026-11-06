@@ -3,11 +3,6 @@
  * its animation frames at a cell position, and closing it; opening,
  * drawing and closing a bigpic library picture, which big_redraw reopens
  * from big_last when it has been closed.
- * (v1.0: the PIC pictures and the bigpic pictures load their own palette
- * with res_palette_load, where v1.1 blacks out entries 0x20..0xff with
- * pal_set and pal_commit; pic_frame and big_redraw pal_select the picture
- * where v1.1 calls res_palette_load; pic_show refuses a frame outside 1..3
- * with error_box and game_exit.)
  *
  * EXE 0x03679c..0x036b92, one Turbo C large-model _TEXT segment starting at
  * byte 0xc of paragraph 24da in RTLink section 3 (payload 0x30ed0, link
@@ -27,8 +22,7 @@
  * definition, so that one is prototyped.  menu.c reads pic's anim byte
  * (c2ef) as anim_speed.
  *
- * _DATA is five literals stored as four (six as five in v1.0, with
- * pic_show's message), DGROUP 6074..608c: -d stores ""
+ * _DATA is five literals stored as four, DGROUP 6074..608c: -d stores ""
  * on the terminator of "PIC" (6077).  _BSS is big_last at acd2.
  */
 
@@ -47,7 +41,7 @@ void far pic_frame(int col, int row, char show, unsigned char frame_index) /* 24
                 glyph_draw(col, row, 1, pic.res);
             glyph_draw(col, row, frame_index + 1, pic.res);
         }
-        pal_select(pic.res);
+        res_palette_load(pic.res);
         screen_flush();
     }
 }
@@ -56,7 +50,9 @@ void far pic_open(char far *name, unsigned char id, char unused,
                   struct Pic far *picture)                             /* 24da:0078 */
 {
     char disk[2];
+    char pal[0x300];
 
+    mem_fill(pal, 0x300, 0);
     mode_change(str_same(name, "PIC") ? 2 : 0);
     if (str_same(name, pic_name) && id == view_kind || id == 0xff)
         return;
@@ -71,7 +67,11 @@ void far pic_open(char far *name, unsigned char id, char unused,
                        id, 0, 0, &picture->res);
     else
         tile_open_file(msg_format("%s%s", name, disk), id, 0, 0, &picture->res);
-    res_palette_load(picture->res);
+    if (str_same(name, "PIC"))
+        pal_set(0x20, 0xe0, pal, 0, 0);
+    else
+        res_palette_load(picture->res);
+    pal_commit();
     picture->frames = res_item_count(picture->res);
     if (str_same(name, "PIC")) {
         picture->frames--;
@@ -106,10 +106,6 @@ void far pic_release(void)                                   /* 24da:02b0 */
 
 void far pic_show(unsigned char frame_index)                               /* 24da:02e5 */
 {
-    if (frame_index < 1 || frame_index > 3) {
-        error_box("Illegal range in Show3DSprite.");
-        game_exit();
-    }
     if (pic.res != 0) {
         glyph_draw(3, 3, frame_index, pic.res);
         pal_select(pic.res);
@@ -119,11 +115,15 @@ void far pic_show(unsigned char frame_index)                               /* 24
 
 void far big_open(unsigned char id)                              /* 24da:0321 */
 {
+    char pal[0x300];
+
+    mem_fill(pal, 0x300, 0);
     mode_change(3);
     if (view_flag != id) {
         set_open_mode('2');
         tile_open_file(msg_format("bigpic%d", pic_disk), id, 0, 0, &big_res);
-        res_palette_load(big_res);
+        pal_set(0x20, 0xe0, pal, 0, 0);
+        pal_commit();
         big_last = view_flag = id;
     }
 }
@@ -134,7 +134,7 @@ void far big_redraw(void)                                        /* 24da:03b0 */
         big_open(big_last);
     frame_lower_panel();
     glyph_draw(1, 1, 1, big_res);
-    pal_select(big_res);
+    res_palette_load(big_res);
 }
 
 void far bigpic_release(void)                                   /* 24da:03eb */

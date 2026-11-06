@@ -5,8 +5,8 @@
  * 3..0x0f go to sound_event when digital is set, and otherwise sound a
  * two-tick tone on the speaker; with sound_card 6 effects and songs
  * (0x20..0x27) are skipped.  sfx_init asks slot_used(-1) for the far
- * memory left: under 0x33c00 bytes it clears digital (v1.0 prints no
- * message), otherwise it sets digital and passes
+ * memory left: under 0x33c00 bytes it prints how much more the sound
+ * driver needs and clears digital, otherwise it sets digital and passes
  * its address to sound_open, which stores through it; either way music_on
  * starts set.  game_sound_stop shuts sound down (misc.c's game_exit and
  * gamemain.c call it).  sound_toggle flips the speaker's on flag and sends
@@ -22,7 +22,7 @@
  * far-called; the one far call found to sfx_setup is at 0x037d90, and the
  * one to sfx_init at 0x037e1a.
  *
- * v1.0 has no _DATA (v1.1's is sfx_init's four literals); _BSS is
+ * _DATA is DGROUP 24c2..253c, sfx_init's four literals; _BSS is
  * a846..a847.  No code outside this module was found naming either variable.
  *
  * The seg:off beside each extern is the far pointer as stored in the shipped
@@ -102,9 +102,17 @@ void far sfx_init(void)                                          /* 2023:016f */
     long avail;
 
     avail = slot_used(-1);
-    if (avail < 0x33c00L)
-        digital = 0;            /* v1.0: silently; v1.1 says how much more it needs */
-    else {
+    if (avail < 0x33c00L) {
+        digital = 0;
+        clear_screen(0);
+        text_print_at(0x1f5c, 0x1f44, 0xf, "There is not enough memory to load");
+        text_print_at(0x1f64, 0x1f44, 0xf, "sound driver, need %l bytes more.",
+                      0x33c00L - avail);
+        text_print_at(0x1fa0, 0x1f44, 0xa, "Please hit any key to continue.");
+        key_wait();
+        clear_screen(0);
+        text_print_at(0x1fa0, 0x1f40, 0xa, "Loading...Please Wait");
+    } else {
         digital = 1;
         sound_open(&digital);
     }

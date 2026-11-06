@@ -112,7 +112,7 @@ void far spell_resist_cold(void)                                 /* 2b3a:01c8 */
 void far spell_burning_hands(void)                               /* 2b3a:01e6 */
 {
     if (game_state[STATE_UNDERWATER])
-        bottom_msg("Can't be cast underwater!");
+        bottom_msg("That has no effect underwater!");
     else
         spell_damage_apply(current_spell, 0, 0, caster_level(current_spell, 0), 9, "");
 }
@@ -432,12 +432,10 @@ char far disease_cure(void)                                      /* 2b3a:0dc0 */
 {
     char done;
 
-    /* v1.0 as shipped: done is set whether or not 0x22 was cured, fx_lock is
-     * cleared only when 0xb9 was, and there is no 0xd7/0xac cure */
     done = 0;
     fx_lock = 1;
-    fx_cure(targets[1], 0x22);
-    done = 1;
+    if (fx_cure(targets[1], 0x22))
+        done = 1;
     if (fx_cure(targets[1], 0x2b)) {
         done = 1;
         fx_remove(targets[1], 0x2c, 0);
@@ -445,7 +443,12 @@ char far disease_cure(void)                                      /* 2b3a:0dc0 */
         fx_stat_recalc(targets[1], 0);
     }
     if (fx_cure(targets[1], 0xb9))
-        fx_lock = 0;
+        done = 1;
+    if (fx_cure(targets[1], 0xd7)) {
+        fx_remove(targets[1], 0xac, 0);
+        done = 1;
+    }
+    fx_lock = 0;
     return done;
 }
 
@@ -629,7 +632,7 @@ void far spell_fireball(void)                                    /* 2b3a:1519 */
     unsigned char target_index;
 
     if (game_state[STATE_UNDERWATER] && current_spell != 0x33) {
-        bottom_msg("Can't be cast underwater!");
+        bottom_msg("That has no effect underwater!");
     } else {
         mirror_image_bypass = 1;
         if (current_spell == 0x85)
@@ -662,10 +665,14 @@ void far side_apply(char kind, int side_id, char far *msg)            /* 2b3a:16
         if (targets[target_index]->side != side_id || left <= 0) {
             targets[target_index] = 0;
         } else {
-            /* v1.0 cures at once; v1.1 first offers the effect to group 9 */
-            left--;
-            if (fx_cure(targets[target_index], kind))
-                targets[target_index] = 0;
+            effect_id = kind;
+            element_mask = 8;
+            fx_trigger_group(9, &targets[target_index]);
+            if (effect_id == kind) {
+                left--;
+                if (fx_cure(targets[target_index], kind))
+                    targets[target_index] = 0;
+            }
         }
     }
     spell_damage_apply(current_spell, 0, 0, 0, 0, msg);
@@ -974,7 +981,7 @@ void far spell_dispel_evil(void)                                 /* 2b3a:210b */
 void far spell_flame_strike(void)                                /* 2b3a:2157 */
 {
     if (game_state[STATE_UNDERWATER]) {
-        bottom_msg("Can't be cast underwater!");
+        bottom_msg("That has no effect underwater!");
     } else {
         mirror_image_bypass = 1;
         spell_damage_apply(current_spell, 0, 0, fx_roll_damage(6, 8), 9, "");
@@ -1140,7 +1147,7 @@ void far spell_fire_shield(void)                                 /* 2b3a:26b4 */
         switch (choice) {
         case 0:
             if (game_state[STATE_UNDERWATER]) {
-                bottom_msg("Can't be cast underwater!");
+                bottom_msg("That has no effect underwater!");
                 return;
             }
             fx_add_message(cur_node, 0x32, spell_duration(0x55), 0, 0, 0, 0, "is Protected");
@@ -1562,7 +1569,7 @@ void far spell_word_stun(void)                                   /* 2b3a:3569 */
 void far spell_fire_touch(void)                                  /* 2b3a:36d6 */
 {
     if (game_state[STATE_UNDERWATER])
-        bottom_msg("Can't be cast underwater!");
+        bottom_msg("That has no effect underwater!");
     else
         spell_damage_apply(current_spell, 0, 0, 0, 0, "is covered in flame");
 }
@@ -1701,7 +1708,7 @@ void far spell_meteor_swarm(void)                                /* 2b3a:3b99 */
     char path_found;
 
     if (game_state[STATE_UNDERWATER]) {
-        bottom_msg("Can't be cast underwater!");
+        bottom_msg("That has no effect underwater!");
         return;
     }
     mirror_image_bypass = 1;
