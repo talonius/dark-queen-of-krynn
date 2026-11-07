@@ -1,6 +1,6 @@
 # The Dark Queen of Krynn
 
-This project is an **unfinished** source reconstruction of SSI's DOS version of *The Dark Queen of Krynn*. Most of the program has been recovered as Turbo C and assembly source, but the executable cannot yet be rebuilt from this repository, and it is not yet a byte-for-byte reconstruction. The missing piece is the linker SSI used: the right version of Pocket Soft's RTLink/Plus. See [Status](#status).
+This project is a source reconstruction of SSI's DOS version of *The Dark Queen of Krynn*. The program has been recovered as Turbo C and assembly source, and `DQK.EXE` can be rebuilt from this repository with Turbo C 2.01, Turbo Assembler 3.1 and Pocket Soft's RTLink/Plus overlay linker under DOSBox-X (see [Building](#building)). The rebuilt executable plays, but it is not a byte-for-byte copy of SSI's: the RTLink/Plus version SSI used has not been found, and the one used here lays the program out slightly differently. See [Status](#status).
 
 I am unable to continue this work. It is published in the hope that someone else can finish it.
 
@@ -25,6 +25,7 @@ The `v1.0` and `v1.1` tags hold the reconstruction of each DOS release; `main` h
 | `src/asm/` | Hand-written assembly for Turbo Assembler, including the startup code and the Miles AIL sound library |
 | `src/rtlink/` | Reviewed assembly for the RTLink/Plus overlay manager's startup routines |
 | `src/generated/` | NASM source for every byte not yet recovered as C or TASM source, and `manifest.json` |
+| `build/` | The DOS build: `build.py` (host driver), `BUILD.BAT`, the RTLink/Plus link script `DQK.LNK` and `RTLINK.CFG` |
 
 `src/generated/manifest.json` describes the whole executable as an ordered list of parts. For each part it records the file offset and size of its bytes in `DQK.EXE` and the source and tool that produce them. For each C or TASM module it also records where the linker placed its segments (`place`) and the address of every external symbol it calls (`syms`). The executable's SHA-256 is recorded as `reference_sha256`.
 
@@ -38,28 +39,47 @@ By bytes of `DQK.EXE`, the parts break down as:
 | Turbo Assembler 3.1, from `src/asm/` | 29 | 16,208 | 3.6% |
 | NASM, from `src/generated/` and `src/rtlink/` | the rest | 37,781 | 8% |
 
-Most of the NASM share is not program code: it is the MZ header, the relocation tables and RTLink/Plus's own structures, which a linker writes itself. A few kilobytes of resident code are still recovered only as NASM.
+Most of the NASM share is not program code: it is the MZ header, the relocation tables and RTLink/Plus's own structures, which a linker writes itself. The rest is RTLink/Plus's overlay manager, which the linker also supplies.
 
-The game was linked with Pocket Soft's **RTLink/Plus**, an overlay linker: `DQK.EXE` carries RTLink/Plus's overlay manager and a table of 13 sections that it loads on demand. Without the RTLink/Plus version SSI used, the compiled modules cannot be linked into the original layout. The disassembly project worked around this with its own host-side tools, which assembled the NASM parts and placed each compiled C and TASM module at the address the manifest records. Those tools are not part of this repository.
+The game was linked with Pocket Soft's **RTLink/Plus**, an overlay linker: `DQK.EXE` carries RTLink/Plus's overlay manager and a table of 13 sections that it loads on demand. The disassembly project proved the sources byte for byte with its own host-side tools, which assembled the NASM parts and placed each compiled C and TASM module at the address the manifest records. Those tools are not part of this repository. What is here instead is a real DOS link, described below.
 
-**The missing piece is the right version of RTLink/Plus.** These versions were tried, and none of them matches the overlay manager in `DQK.EXE`:
+### The RTLink/Plus build
 
-- RTLink 2.03
-- RTLink-Plus 4.00
-- RTLink-Plus 4.14
-- RTLink-Plus 6.10
+`build/` compiles every C module with Turbo C 2.01, assembles every assembly module with TASM 3.1, and links them with **RTLink/Plus 4.14** (Pocket Soft, 1991), all under DOSBox-X. `build/DQK.LNK` gives the shipped overlay structure: the resident code, then twelve code sections in four load regions (combat with two sections above it, the adventure with five above it, and spells and views in a second area). RTLink/Plus puts DGROUP in a preloaded data section of its own, as SSI's linker did.
 
-Another version, most likely one from around the game's release, may match. With it, the remaining work is to write the link: the RTLink/Plus command or response file describing the sections, and a DOS build that compiles, assembles and links everything under DOSBox-X.
+The result, measured against the shipped `DQK.EXE`:
 
-### A link without RTLink/Plus
+- The link resolves every symbol. Its section table has the shipped shape: all 13 records have the shipped body length, relocation count, parent section and flags.
+- The resident code ahead of the overlay manager, 121,226 bytes, has the shipped length and layout. 4,928 of those bytes differ: segment words and DGROUP offsets, moved by the two layout differences below. That was checked by sampling, not proven byte by byte.
+- It plays. Under DOSBox-X it shows the title, runs the built-in demo into tactical combat with AI turns and spells, loads a saved game, views a character, enters Palanthas, runs its scripted events, and opens a shop. The demo's screens are identical to the shipped executable's, frame for frame, for its first two minutes. That is as far as the shipped executable repeats itself from run to run, too.
+- It is 449,247 bytes, against 449,664.
 
-As an experiment, every module was built with Turbo C 2.01 and Turbo Assembler 3.1 under DOSBox-X and linked flat, without overlays, by Turbo C 2.01's own TLINK. All 86 C files compile without errors and all 27 assembly files assemble. TLINK produced an executable, but with 249 unresolved symbols and one duplicate:
+It is not byte-identical, for two reasons:
 
-- 220 global variables are declared in the headers but defined only as bytes in the NASM data section in `src/generated/`. A DOS link needs them as a real data module with their names and initial values; the manifest's `syms` give the address of each.
-- 29 Miles AIL functions are called as `ail_*` from C but exported as `AIL_*` by `ail.asm`; the declarations and the library's naming need to agree.
-- `__psp` is defined by both Turbo C's `C0L.OBJ` and `startdat.c`: the game has its own startup code (`src/asm/start.asm`) and should be linked without `C0L`.
+1. **The overlay manager is 4.14's, not SSI's.** SSI's manager is from a later RTLink/Plus, most likely 5.02 to 5.10: it adds the file-offset adjustment 5.02 introduced, and lacks the `$$RTL_TERMINATE` code of later versions. Versions 2.03, 4.00, 4.14 and 6.10 were all compared, and none matches it. 4.14's manager, with the same 32-call reload stack (`RELOAD FAR 32.`), is 416 bytes shorter. Everything linked after it, the overlay load regions and DGROUP, sits 26 paragraphs lower, so every relocated segment word that names them differs. `src/asm/rtlerr.asm` and `rtlfind.asm` reconstruct the run-time code beside SSI's manager. They are assembled but not linked, because RTLink/Plus supplies its own.
+2. **DGROUP is in a different order.** RTLink/Plus 4.14 lays out each module's `_DATA` and `_BSS` in the order the link script names the modules. The shipped order shows that SSI's link pulled many modules from a library after the named ones, and put four of them, `lineedit`, `dispinit`, `dirnames` and `approach`, into the overlay section that needed them. 4.14 extracts library modules only into the resident code, so that order cannot be reproduced with it. Every DGROUP offset that moves changes the code that uses it.
 
-Even fully resolved, a flat link is not SSI's executable, and the game may not fit in conventional memory without its overlays.
+Three source changes were needed for a real link. Each is additive, and the byte-exact form is kept:
+
+- `src/asm/start.asm` assembles with `/dLINKED` for this build. It then declares the segment order (code, `_DATA`, `_BSS`, an end marker and a 1K stack, as in the shipped image), zeroes `_BSS` from linker-resolved bounds instead of the shipped `a260..db5f`, and names `start` as the entry point.
+- `src/asm/globals.asm` defines the 218 global variables that no module defines. Turbo C emits an uninitialised global as a communal variable, which the linker allocates; the reconstructed C declares them `extern` in `dqk.h`. The file keeps their shipped order and spacing.
+- The link matches symbols without regard to case. `sound.c` calls `ail_startup`; `ail.asm` exports `AIL_startup`.
+
+The right RTLink/Plus version, about 5.02 from late 1991 or 1992, should close most of the remaining gap: its manager, and very likely its library extraction into sections.
+
+## Building
+
+You need Python 3 and DOSBox-X on the host, and three DOS tools, none of which is included:
+
+- **Turbo C 2.01**: the directory holding `TCC.EXE`, with its `INCLUDE` directory. Its default `TURBOC.CFG` names `D:\INCLUDE`, and the build mounts the compiler as `D:`.
+- **Turbo Assembler 3.1**: Borland C++ 3.1's `BIN` directory, holding `TASM.EXE`.
+- **RTLink/Plus 4.14**, installed: the directory holding `RTLINK.EXE`.
+
+```
+build/build.py --tc /path/to/TC201 --tasm /path/to/BC31/BIN --rtlink /path/to/RTLINK
+```
+
+The three directories may also be given as `DQK_TC`, `DQK_TASM` and `DQK_RTLINK`. The build copies the sources to a temporary directory, runs `build/BUILD.BAT` in DOSBox-X without a window, checks the logs, and writes `DQK.EXE`, `DQK.MAP` and the compiler, assembler and linker logs to `obj/`. Copy `DQK.EXE` over the one in an installed copy of the game to play it.
 
 ## Compiler and assembler
 
@@ -75,7 +95,9 @@ tcc -c -ml -O -Z -d <module>.c
 - `-Z` suppresses redundant register loads.
 - `-d` merges duplicate strings.
 
-The assembly in `src/asm/` is assembled with **Turbo Assembler 3.1** (from Borland C++ 3.1) with `/ml` (case-sensitive symbols). `ail.asm` uses `/m /w+ /ml`: it needs TASM 3.1's multiple passes.
+The assembly in `src/asm/` is assembled with **Turbo Assembler 3.1** (from Borland C++ 3.1) with `/ml` (case-sensitive symbols). `ail.asm` uses `/m /w+ /ml`: it needs TASM 3.1's multiple passes. For the RTLink/Plus build, `start.asm` adds `/dLINKED`.
+
+The linker was **RTLink/Plus**, from about version 5.02 (see [Status](#status)). This repository's build uses RTLink/Plus 4.14, with the FREEFORMAT link script `build/DQK.LNK`.
 
 ## Third-party code
 
