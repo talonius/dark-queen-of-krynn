@@ -1,0 +1,66 @@
+# DQK.LNK -- RTLink/Plus link of DQK.EXE (FREEFORMAT; RTLINK.CFG selects it).
+#
+# The resident code, then the overlay structure of the shipped DQK.EXE: twelve
+# code sections in four load regions, recorded in its section table (records
+# 0-11; record 12 is DGROUP).  Section numbers below are the shipped records'.
+# Within each part the modules are in their shipped order.  Symbols are matched
+# without regard to case (no MIXCASE): sound.c calls ail_startup and ail.asm
+# exports AIL_startup.
+
+OUTPUT dqk
+MAP s,n,a
+
+# Reload an overwritten section when a call into an overlapping one returns
+# (section 3's code calls into section 0, which loads over it).  The shipped
+# manager's reload stack is 192 bytes, six per nested call: 32.
+RELOAD FAR 32.
+
+# Resident: the start-up (first: it fixes the segment order), its data, the
+# Miles AIL driver interface and the hand-written library, then the resident C.
+FILE start, startdat, ail, lowlevel, gfxutil, dissolve, pcmplay, pixrow, vgadraw
+FILE lzcodec, conio, cputs, strcmp, strings, dosio, memops, farmem, sysint, bios
+FILE ldiv, lxmul, llsh, lrsh, lursh, scopy, envget
+FILE rest, fxcore, hero, chartab, tiles, textwin, listbox, menu, strutil, sound
+FILE sndevent, sfxctl, spelltab, charpic, gametext, misc, frame, sysutil, prompt
+FILE diskfile, scroll, vidmouse, lowio, scrfont, speaker, palette, glyph, glyphfx
+FILE fcache, digisnd, library, libedit, dialog, sfxslots, inpglue, cmdargs
+FILE pathfind, pathutil, dirfind, strscan, fmtout, textfmt, numparse
+FILE globals
+
+BEGINAREA
+  # Section 0: combat.  Sections 1 and 2 load above it.
+  SECTION = combat
+    FILE combat, cbtutil, cbaction, cbview
+    BEGINAREA
+      SECTION = cmbsetup
+        FILE cmbsetup
+      SECTION = aiturn
+        FILE aiturn, dirnames, approach
+    ENDAREA
+
+  # Section 3: the adventure.  Sections 4-8 load above it.
+  SECTION = adventur
+    FILE roster, glbdata, gamemain, eclrun, saveload, picview, poolfile, lineedit
+    BEGINAREA
+      SECTION = startup
+        FILE config, poolinit, combtab, newgame, titleseq, copyprot, dispinit
+      SECTION = create
+        FILE create, modify, train
+      SECTION = eclcmds
+        FILE eclcmds, move, cursor
+      SECTION = camp
+        FILE camp, party
+      SECTION = shops
+        FILE money, postcmbt, shop, temple
+    ENDAREA
+ENDAREA
+
+BEGINAREA
+  # Sections 9-11: spell effects, spell casting, the character and 3D views.
+  SECTION = effects
+    FILE effects, fxcombat
+  SECTION = spells
+    FILE spellfx, spellcst
+  SECTION = charview
+    FILE charview, view3d, herostat
+ENDAREA

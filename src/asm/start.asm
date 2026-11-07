@@ -18,7 +18,31 @@
 
                 .8086
 
+ifdef LINKED
+;  The RTLink/Plus build (build/DQK.LNK assembles this file with /dLINKED).
+;  As the first object linked, this file fixes the segment order: code, then
+;  every DGROUP segment in its shipped order (dgorder.inc), then the _BSSEND
+;  marker, then a 1K stack segment, as in the shipped image (its SS:SP,
+;  3fe4:0400, is DGROUP + db60h, the end of the zeroed region).  The zeroed
+;  region is bss_start.._bss_end, resolved by the linker, which with that
+;  order is the shipped a260..db5f; _bss_end is where startdat.c's heap_brk
+;  starts.
+START_TEXT      segment byte public 'CODE'
+START_TEXT      ends
+_DATA           segment word public 'DATA'
+_DATA           ends
+                include dgorder.inc
+_BSSEND         segment byte public 'BSSEND'
+                public  _bss_end
+_bss_end        label   byte
+_BSSEND         ends
+_STACK          segment para stack 'STACK'
+                db      400h dup (?)
+_STACK          ends
+DGROUP          group   _DATA, _BSS, _BSSEND
+else
 DGROUP          group   _DATA
+endif
 _DATA           segment word public 'DATA'
                 extrn   __psp:word              ; 0020: the PSP's segment
                 extrn   _start_sp:word          ; 0026: SP after the stack is set up
@@ -131,10 +155,20 @@ sp_even:
                 push    ax
                 mov     ax,ds
                 mov     es,ax
+ifdef LINKED
+                ; The same ten bytes as the shipped sequence: no jz, since
+                ; rep stosw with cx = 0 stores nothing; an odd last byte is
+                ; left, as the shipped 3901h was.
+                mov     cx,offset DGROUP:_bss_end
+                mov     di,offset DGROUP:bss_start
+                sub     cx,di
+                shr     cx,1
+else
                 mov     cx,BSS_BYTES
                 shr     cx,1
                 jz      bss_zeroed
                 mov     di,BSS_START
+endif
                 xor     ax,ax
                 rep     stosw
 bss_zeroed:
@@ -142,4 +176,8 @@ bss_zeroed:
                 mov     ax,4C00h                ; DOS: exit, code 0
                 int     21h
 START_TEXT      ends
+ifdef LINKED
+                end     start                   ; the entry RTLink's manager reaches
+else
                 end
+endif

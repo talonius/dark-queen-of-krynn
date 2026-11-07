@@ -25,7 +25,14 @@ struct Config {
     unsigned char rest[0x8c];
 };
 
+#ifdef LINKED
+/* The RTLink/Plus build (tcc -DLINKED): src/asm/globals.asm defines config, so
+ * that sound_card, save_drive and save_path, which other modules name, can be
+ * labels inside it, as they were in the shipped DGROUP. */
+extern struct Config config;                                     /* acd6 */
+#else
 struct Config config;                                            /* acd6 */
+#endif
 
 void far config_load(void)                                       /* 25a4:0000 */
 {
