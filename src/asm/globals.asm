@@ -1,33 +1,49 @@
-;  globals.asm -- the game's communal variables, for the RTLink/Plus build.
+;  globals.asm -- DGROUP storage no reconstructed module defines, for the
+;  RTLink/Plus build (assembled with /ml; start.asm places its segments).
 ;
 ;  Turbo C 2.01 emits an uninitialised global (`int x;` at file scope) as a
-;  communal variable, which the linker, not the compiler, allocates.  In the
-;  shipped DQK.EXE these 218 sit in DGROUP's _BSS at acd8..c6f7, after
-;  config.c's _BSS and before copyprot.c's, with effects.c's own _BSS at
-;  beec..c27f in the middle of them.  The reconstructed C declares every one of
-;  them extern in dqk.h (the byte-exact build resolved them by address), so no
-;  object defines them; this file does, in their shipped order and spacing,
-;  so variables that were neighbours in the shipped image are neighbours here.
-;  Sizes are the distance to the next variable, so a variable owns any unnamed
-;  bytes after it.  effects.c's own _BSS, which sat at beec..c27f, is not
-;  reserved here: it is effects.c's to place.  The declaration beside each
-;  name is dqk.h's.
+;  communal variable, which the linker, not the compiler, allocates.  The
+;  reconstructed C declares these extern in dqk.h (the byte-exact build resolved
+;  them by address), so no object defines them; this file does, each at its
+;  shipped DGROUP offset (in the comments), in segments start.asm declares in
+;  shipped order (dgorder.inc), so DGROUP comes out as it shipped.
 ;
-;  Generated from src/generated/manifest.json (each variable's DGROUP offset)
-;  and dqk.h.  Assembled with TASM 3.1 /ml; zeroed at start-up with the rest of
-;  _BSS by start.asm.
+;  B_GLOBALS1 begins with config.c's config, the 90h bytes of DISK1\DQK.CFG:
+;  sound_card, save_drive and save_path are fields of it that other modules
+;  name, so they are labels inside it here (config.c declares config extern
+;  under LINKED).  The B_GAP segments are DGROUP bytes nothing names; they are
+;  kept so that every object keeps its shipped neighbours (a table indexed from
+;  1 reads and writes its element 0 in the bytes before it).
+;
+;  Sizes run to the next name.  Generated from src/generated/manifest.json and
+;  dqk.h.
 
                 .8086
 
-DGROUP          group   _BSS
-_BSS            segment word public 'BSS'
+DGROUP          group   B_GAP_A295
+B_GAP_A295      segment byte public 'BSS'
+                db         21 dup (?)       ; a295  named by nothing
+B_GAP_A295      ends
 
+DGROUP          group   B_GAP_ACAC
+B_GAP_ACAC      segment byte public 'BSS'
+                db          4 dup (?)       ; acac  named by nothing
+B_GAP_ACAC      ends
+
+DGROUP          group   B_GLOBALS1
+B_GLOBALS1      segment word public 'BSS'
+                public  _config
+_config         label   byte                    ; acd6  struct Config config;  (config.c: the 90h bytes of DISK1\DQK.CFG)
+                db          2 dup (?)       ; acd6  config
                 public  _sound_card
-_sound_card     db          8 dup (?)       ; acd8  extern int sound_card;
+_sound_card     label   byte                    ; acd8  extern int sound_card;
+                db          8 dup (?)       ; acd8  config
                 public  _save_drive
-_save_drive     db          2 dup (?)       ; ace0  extern int save_drive;
+_save_drive     label   byte                    ; ace0  extern int save_drive;
+                db          2 dup (?)       ; ace0  config
                 public  _save_path
-_save_path      db        133 dup (?)       ; ace2  extern char save_path[];
+_save_path      label   byte                    ; ace2  extern char save_path[];
+                db        133 dup (?)       ; ace2  config
                 public  _cur_node
 _cur_node       db          4 dup (?)       ; ad67  extern struct Character far *cur_node;
                 public  _next_monster_group
@@ -324,6 +340,10 @@ _shop_temple_frame db          1 dup (?)       ; bee9  extern char shop_temple_f
 _noncombat_redraw_pending db          1 dup (?)       ; beea  extern char noncombat_redraw_pending;
                 public  _disk_number
 _disk_number    db          1 dup (?)       ; beeb  extern char disk_number;
+B_GLOBALS1      ends
+
+DGROUP          group   B_GLOBALS2
+B_GLOBALS2      segment word public 'BSS'
                 public  _mirror_image_bypass
 _mirror_image_bypass db          1 dup (?)       ; c280  extern char mirror_image_bypass;
                 public  _bonus_slots
@@ -458,5 +478,11 @@ _target_count   db          1 dup (?)       ; c6f4  extern unsigned char target_
 _training_selection_changed db          1 dup (?)       ; c6f5  extern char training_selection_changed;
                 public  _encounter_images_shown
 _encounter_images_shown db          2 dup (?)       ; c6f6  extern char encounter_images_shown[];
-_BSS            ends
+B_GLOBALS2      ends
+
+DGROUP          group   B_GAP_DABC
+B_GAP_DABC      segment byte public 'BSS'
+                db          4 dup (?)       ; dabc  named by nothing
+B_GAP_DABC      ends
+
                 end

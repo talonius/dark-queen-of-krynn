@@ -21,18 +21,17 @@
 ifdef LINKED
 ;  The RTLink/Plus build (build/DQK.LNK assembles this file with /dLINKED).
 ;  As the first object linked, this file fixes the segment order: code, then
-;  DGROUP's _DATA, _BSS and the _BSSEND marker, then a 1K stack segment, as in
-;  the shipped image (its SS:SP, 3fe4:0400, is DGROUP + db60h, the end of the
-;  zeroed region).  The zeroed region is bss_start.._bss_end, resolved by the
-;  linker, instead of the shipped a260..db5f; _bss_end is where startdat.c's
-;  heap_brk starts.
+;  every DGROUP segment in its shipped order (dgorder.inc), then the _BSSEND
+;  marker, then a 1K stack segment, as in the shipped image (its SS:SP,
+;  3fe4:0400, is DGROUP + db60h, the end of the zeroed region).  The zeroed
+;  region is bss_start.._bss_end, resolved by the linker, which with that
+;  order is the shipped a260..db5f; _bss_end is where startdat.c's heap_brk
+;  starts.
 START_TEXT      segment byte public 'CODE'
 START_TEXT      ends
 _DATA           segment word public 'DATA'
 _DATA           ends
-_BSS            segment word public 'BSS'
-bss_start       label   byte
-_BSS            ends
+                include dgorder.inc
 _BSSEND         segment byte public 'BSSEND'
                 public  _bss_end
 _bss_end        label   byte

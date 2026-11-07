@@ -23,11 +23,20 @@
 
                 .8086
 
+ifdef LINKED
+DGROUP          group   D_FARMEM                ; the RTLink/Plus build names the
+D_FARMEM        segment word public 'DATA'      ;   segment, so start.asm can place it
+else
 DGROUP          group   _DATA
 _DATA           segment word public 'DATA'
+endif
                 public  _far_fallback
 _far_fallback   dd      0                       ; a25c: the largest block DOS had,
-_DATA           ends                            ;   in bytes, after a refusal
+ifdef LINKED                                    ;   in bytes, after a refusal
+D_FARMEM        ends
+else
+_DATA           ends
+endif
 
 DOS             equ     21h
 DOS_ALLOC       equ     48h                     ; bx = paragraphs; ax = the segment

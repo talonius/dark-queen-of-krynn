@@ -51,8 +51,17 @@ _DATA           segment word public 'DATA'
                 extrn   _base_offset:word       ; cb80: vidmouse.c, added at a bank's end
                 extrn   _extent_text:word       ; cb83: vidmouse.c, a bank's end offset
                 extrn   _screen_addr:word       ; cb85: vidmouse.c, the first byte to draw
+ifdef LINKED
+_DATA           ends                            ; the RTLink/Plus build names this
+D_LOWLEVEL      segment word public 'DATA'      ;   file's one data byte's segment, so
+endif                                           ;   start.asm can place it (dgorder.inc)
                 public  _joy_last
 _joy_last       db      0                      ; a246: port 201h as timer_isr last read it
+ifdef LINKED
+D_LOWLEVEL      ends
+DGROUP          group   D_LOWLEVEL
+_DATA           segment word public 'DATA'
+endif
                 extrn   _joy_last_ail:byte      ; 002a: the same for timer_tick
                 extrn   _column_mouse:word      ; cb55: vidmouse.c, the pointer's text column
                 extrn   _mousey_now:word        ; cb77: vidmouse.c, the pointer's text row

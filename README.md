@@ -1,6 +1,6 @@
 # The Dark Queen of Krynn
 
-This project is a source reconstruction of SSI's DOS version of *The Dark Queen of Krynn*. The program has been recovered as Turbo C and assembly source, and `DQK.EXE` can be rebuilt from this repository with Turbo C 2.01, Turbo Assembler 3.1 and Pocket Soft's RTLink/Plus overlay linker under DOSBox-X (see [Building](#building)). The rebuilt executable plays, but it is not a byte-for-byte copy of SSI's: the RTLink/Plus version SSI used has not been found, and the one used here lays the program out slightly differently. See [Status](#status).
+This project is a source reconstruction of SSI's DOS version of *The Dark Queen of Krynn*. The program has been recovered as Turbo C and assembly source, and `DQK.EXE` can be rebuilt from this repository with Turbo C 2.01, Turbo Assembler 3.1 and Pocket Soft's RTLink/Plus overlay linker under DOSBox-X (see [Building](#building)). The rebuilt executable plays, but it is not a byte-for-byte copy of SSI's: the RTLink/Plus version SSI used has not been found, and the one used here supplies a different overlay manager, which moves everything linked after it. See [Status](#status).
 
 I am unable to continue this work. It is published in the hope that someone else can finish it.
 
@@ -49,23 +49,22 @@ The game was linked with Pocket Soft's **RTLink/Plus**, an overlay linker: `DQK.
 
 The result, measured against the shipped `DQK.EXE`:
 
-- The link resolves every symbol. Its section table has the shipped shape: all 13 records have the shipped body length, relocation count, parent section and flags.
-- The resident code ahead of the overlay manager, 121,226 bytes, has the shipped length and layout. 4,928 of those bytes differ: segment words and DGROUP offsets, moved by the two layout differences below. That was checked by sampling, not proven byte by byte.
-- It plays. Under DOSBox-X it shows the title, runs the built-in demo into tactical combat with AI turns and spells, loads a saved game, views a character, enters Palanthas, runs its scripted events, and opens a shop. The demo's screens are identical to the shipped executable's, frame for frame, for its first two minutes. That is as far as the shipped executable repeats itself from run to run, too.
-- It is 449,247 bytes, against 449,664.
+- The link resolves every symbol. Its section table has the shipped shape: all 13 records have the shipped body length, relocation count, parent section and flags, and DGROUP has the shipped size.
+- DGROUP is laid out exactly as shipped: every module's data and every variable is at its shipped offset. Its 41,568 initialised bytes differ only in 882 relocated segment words.
+- Everywhere else, the differences come from the overlay manager alone. In the 121,226 bytes of resident code ahead of the manager, 163 bytes differ; in the twelve code sections, 1,760 of 247,728. Each difference found is one of three things: a relocated segment word 26 paragraphs lower, the offset of one of the manager's call vectors, or `start.asm`'s `_BSS` zeroing, which takes its bounds from the linker. This was classified with scripts, not proven for every byte.
+- It plays. Under DOSBox-X it shows the title, runs the built-in demo into tactical combat with AI turns and spells, loads a saved game, views a character, enters Palanthas, runs its scripted events, and opens a shop. The same keys give byte-identical screenshots from this build and the shipped executable, and the demo's screens are identical frame for frame for its first two minutes. That is as far as the shipped executable repeats itself from run to run, too. A dump of DGROUP at the shop differs from the shipped executable's no more than two runs of the shipped executable differ from each other, apart from the expected segment words.
+- It is 449,244 bytes, against 449,664.
 
-It is not byte-identical, for two reasons:
+It is not byte-identical because **the overlay manager is 4.14's, not SSI's.** SSI's manager is from a later RTLink/Plus, most likely 5.02 to 5.10: it adds the file-offset adjustment 5.02 introduced, and lacks the `$$RTL_TERMINATE` code of later versions. Versions 2.03, 4.00, 4.14 and 6.10 were all compared, and none matches it. 4.14's manager, with the same 32-call reload stack (`RELOAD FAR 32.`), is 416 bytes shorter. Everything linked after it, the overlay load regions and DGROUP, sits 26 paragraphs lower, so every relocated segment word that names them differs. So do the far calls into the manager's call vectors, which 4.14 lays out differently. `src/asm/rtlerr.asm` and `rtlfind.asm` reconstruct the run-time code beside SSI's manager. They are assembled but not linked, because RTLink/Plus supplies its own.
 
-1. **The overlay manager is 4.14's, not SSI's.** SSI's manager is from a later RTLink/Plus, most likely 5.02 to 5.10: it adds the file-offset adjustment 5.02 introduced, and lacks the `$$RTL_TERMINATE` code of later versions. Versions 2.03, 4.00, 4.14 and 6.10 were all compared, and none matches it. 4.14's manager, with the same 32-call reload stack (`RELOAD FAR 32.`), is 416 bytes shorter. Everything linked after it, the overlay load regions and DGROUP, sits 26 paragraphs lower, so every relocated segment word that names them differs. `src/asm/rtlerr.asm` and `rtlfind.asm` reconstruct the run-time code beside SSI's manager. They are assembled but not linked, because RTLink/Plus supplies its own.
-2. **DGROUP is in a different order.** RTLink/Plus 4.14 lays out each module's `_DATA` and `_BSS` in the order the link script names the modules. The shipped order shows that SSI's link pulled many modules from a library after the named ones, and put four of them, `lineedit`, `dispinit`, `dirnames` and `approach`, into the overlay section that needed them. 4.14 extracts library modules only into the resident code, so that order cannot be reproduced with it. Every DGROUP offset that moves changes the code that uses it.
+A real link needed these source changes. Each is additive, and the byte-exact form is kept:
 
-Three source changes were needed for a real link. Each is additive, and the byte-exact form is kept:
-
-- `src/asm/start.asm` assembles with `/dLINKED` for this build. It then declares the segment order (code, `_DATA`, `_BSS`, an end marker and a 1K stack, as in the shipped image), zeroes `_BSS` from linker-resolved bounds instead of the shipped `a260..db5f`, and names `start` as the entry point.
-- `src/asm/globals.asm` defines the 218 global variables that no module defines. Turbo C emits an uninitialised global as a communal variable, which the linker allocates; the reconstructed C declares them `extern` in `dqk.h`. The file keeps their shipped order and spacing.
+- **`start.asm`** assembles with `/dLINKED` for this build. It then declares every segment in the shipped order: the code, then each DGROUP segment from `src/asm/dgorder.inc`, then an end marker and a 1K stack, as in the shipped image. It zeroes `_BSS` from linker-resolved bounds, which come out at the shipped `a260..db5f`, and names `start` as the entry point.
+- **DGROUP order.** RTLink/Plus 4.14 lays a class's segments out in the order it first sees them. SSI's order cannot be reached through the link script, because their linker pulled some modules from a library into overlay sections and 4.14 does not. So `build/CC.BAT` compiles each C module with `-zRD_<MODULE> -zDB_<MODULE>`, which names its `_DATA` and `_BSS` and leaves its code unchanged; `lowlevel.asm` and `farmem.asm` name theirs under `LINKED`; and `dgorder.inc`, read by `start.asm` (the first object linked), declares them all in shipped address order. The method came from the FRUA reconstruction, which links the same engine with the same linker.
+- **`globals.asm`** defines the 218 global variables that no module defines, at their shipped offsets. Turbo C emits an uninitialised global as a communal variable, which the linker allocates; the reconstructed C declares them `extern` in `dqk.h`. It also defines `config.c`'s `config`, the 90h bytes of `DISK1\DQK.CFG`, because `sound_card`, `save_drive` and `save_path` are fields of it that other modules name; `config.c` declares it `extern` under `LINKED`. Three runs of DGROUP that nothing names (21, 4 and 4 bytes) get filler segments, so every object keeps its shipped neighbours. That matters because a table indexed from 1 reads and writes its element 0 in the bytes before it.
 - The link matches symbols without regard to case. `sound.c` calls `ail_startup`; `ail.asm` exports `AIL_startup`.
 
-The right RTLink/Plus version, about 5.02 from late 1991 or 1992, should close most of the remaining gap: its manager, and very likely its library extraction into sections.
+The right RTLink/Plus version, about 5.02 from late 1991 or 1992, should close the remaining gap.
 
 ## Building
 
@@ -95,7 +94,7 @@ tcc -c -ml -O -Z -d <module>.c
 - `-Z` suppresses redundant register loads.
 - `-d` merges duplicate strings.
 
-The assembly in `src/asm/` is assembled with **Turbo Assembler 3.1** (from Borland C++ 3.1) with `/ml` (case-sensitive symbols). `ail.asm` uses `/m /w+ /ml`: it needs TASM 3.1's multiple passes. For the RTLink/Plus build, `start.asm` adds `/dLINKED`.
+The assembly in `src/asm/` is assembled with **Turbo Assembler 3.1** (from Borland C++ 3.1) with `/ml` (case-sensitive symbols). `ail.asm` uses `/m /w+ /ml`: it needs TASM 3.1's multiple passes. For the RTLink/Plus build, `start.asm`, `lowlevel.asm` and `farmem.asm` add `/dLINKED`, and each C module adds `-DLINKED -zRD_<MODULE> -zDB_<MODULE>` (`build/CC.BAT`); see [Status](#status).
 
 The linker was **RTLink/Plus**, from about version 5.02 (see [Status](#status)). This repository's build uses RTLink/Plus 4.14, with the FREEFORMAT link script `build/DQK.LNK`.
 
